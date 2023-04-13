@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+#CODE BASED OFF OF: https://github.com/hsaeidi-uncw/robot_control_lectures/tree/main/scripts
+
 import rospy
 import math
 # import the messages for reading the joint positions and sending joint commands

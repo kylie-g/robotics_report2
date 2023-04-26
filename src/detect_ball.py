@@ -47,7 +47,7 @@ if __name__ == '__main__':
 			mask = cv2.inRange(hsv, lower_yellow_rgb, upper_yellow_rgb)
 			#create a rectangle inside the image to reduce the size of area being affected by the mask
 			rgb_rect = np.zeros((720, 1280), dtype = "uint8")
-			rectangle = cv2.rectangle(rgb_rect, (200,120), (850, 600), 255, -1)
+			rectangle = cv2.rectangle(rgb_rect, (260,120), (850, 600), 255, -1)
 			#use bitwise_and to combine the mask and the rectangle so the mask is only applied the the areas in the rectangle
 			mono_img = cv2.bitwise_and(rectangle, mask)
 			#convert img to ros msg and publish, encode it as mono8 to be black/white

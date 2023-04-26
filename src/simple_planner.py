@@ -13,13 +13,15 @@ from robot_vision_lectures.msg import SphereParams
 from tf.transformations import *
 from geometry_msgs.msg import Quaternion
 from std_msgs.msg import Bool
+from std_msgs.msg import UInt8
 
 sphere_param_points = SphereParams()
 points_recieved = False
 
 #from phase 1 code
-def newPlanPoint(plan, linX, linY, linZ, angX, angY, angZ):
+def newPlanPoint(plan, linX, linY, linZ, angX, angY, angZ, mode):
 	plan_point = Twist()
+	point_mode = UInt8()
 	# just a quick solution to send two target points
 	# define a point close to the initial position
 	plan_point.linear.x = linX
@@ -28,8 +30,10 @@ def newPlanPoint(plan, linX, linY, linZ, angX, angY, angZ):
 	plan_point.angular.x = angX
 	plan_point.angular.y = angY
 	plan_point.angular.z = angZ
+	point_mode.data = mode
 	# add this point to the plan
 	plan.points.append(plan_point)
+	plan.modes.append(point_mode)
 
 #get the sphere params from the sphereparams subscriber and set to true if points are recieved
 def get_sphere_params(params):
@@ -97,15 +101,28 @@ if __name__ == '__main__':
 		#MODIFIED FROM PHASE 1
 		# define a plan variable
 		plan = Plan()
+		offset = .025
 		
 		#first point: starting point - initialzied and manual initialization
-		newPlanPoint(plan, 0.133, -0.792, 0.3634, 0, -3.0206, 1.5704)
+		newPlanPoint(plan, 0.133, -0.792, 0.3634, 0, -3.0206, 1.5704, 0)
+		# above ball
+		newPlanPoint(plan, x, y, 0.3634, 0, -3.0206, 1.5704, 0)
 		#second point: where the ball is located
-		newPlanPoint(plan, x, y, z + rad, 0, -3.0206, 1.5704)
+		newPlanPoint(plan, x, y, z + offset, 0, -3.0206, 1.5704, 0)
+		
+		
+		newPlanPoint(plan, x, y, z + offset, 0, -3.0206, 1.5704, 2)
 		#third point: striagh up from where the ball is located (lifting the ball)
-		newPlanPoint(plan, 0.133, y, 0.3634, 0, -3.0206, 1.5704)
+		newPlanPoint(plan, 0.133, y, 0.3634, 0, -3.0206, 1.5704, 0)
 		#fourth point: point where the ball is to be set down
-		newPlanPoint(plan, 0.133, -0.792, z+rad, 0, -3.0206, 1.5704)
+		#newPlanPoint(plan, 0.133, -0.792, 0.3634, 0, -3.0206, 1.5704, 0)
+		
+		newPlanPoint(plan, 0.133, -0.792, z+offset, 0, -3.0206, 1.5704, 0)
+		
+		newPlanPoint(plan, 0.133, -0.792, z+offset, 0, -3.0206, 1.5704, 1)
+		
+		newPlanPoint(plan, 0.133, -0.792, 0.3634, 0, -3.0206, 1.5704, 0)
+		
 		
 		#traker checker: if it is true, let the user know it has stopped moving, otherwise publish as normal
 		if movement_tracker:

@@ -17,6 +17,26 @@ from std_msgs.msg import UInt8
 
 sphere_param_points = SphereParams()
 points_recieved = False
+tool_pose_points = Twist()
+tool_pose_recieved = False
+manualinit = True
+
+#get toolpose to get manual initialization coords
+def get_tool_pose(data):
+	global tool_pose_points
+	global tool_pose_recieved
+	global manualinit
+	#if it is the manual initialization points
+	if manualinit:
+		tool_pose_points.linear.x = data.linear.x
+		tool_pose_points.linear.y = data.linear.y
+		tool_pose_points.linear.z = data.linear.z
+		tool_pose_points.angular.x = data.angular.x
+		tool_pose_points.angular.y = data.angular.y
+		tool_pose_points.angular.z = data.angular.z
+	tool_pose_recieved = True
+	manualinit = False
+		
 
 #from phase 1 code
 def newPlanPoint(plan, linX, linY, linZ, angX, angY, angZ, mode):
@@ -56,6 +76,8 @@ if __name__ == '__main__':
 	pnt_sub = rospy.Subscriber('/sphere_params', SphereParams, get_sphere_params)
 	# add a publisher for sending joint position commands
 	plan_pub = rospy.Publisher('/plan', Plan, queue_size = 10)
+	#get toolpose points of manual initialization
+	pnt_sub = rospy.Subscriber('/ur5e/toolpose', Twist, get_tool_pose)
 	
 	#subscriber to get information on movement for tracking
 	mvnt_sub = rospy.Subscriber('/movement_tracker', Bool, track_movement)
@@ -94,9 +116,18 @@ if __name__ == '__main__':
 		# convert the 3D point to the base frame coordinates
 		pt_in_base = tfBuffer.transform(pt_in_tool,'base', rospy.Duration(1.0))
 		#set x, y, z to the base frame coordinates and rad to the sphere params
-		x, y, z, rad = pt_in_base.point.x, pt_in_base.point.y, pt_in_base.point.z, sphere_param_points.radius
+		ball_x, ball_y, ball_z, ball_rad = pt_in_base.point.x, pt_in_base.point.y, pt_in_base.point.z, sphere_param_points.radius
 		print('Initizalized frame:  x= ', format(pt_in_tool.point.x, '.3f'), '(m), y= ', format(pt_in_tool.point.y, '.3f'), '(m), z= ', format(pt_in_tool.point.z, '.3f'),'(m)')
-		print('BASE frame:  x= ', format(x, '.3f'), '(m), y= ', format(y, '.3f'), '(m), z= ', format(z, '.3f'),'(m)', format(rad, '.3f'))
+		print('BASE frame:  x= ', format(ball_x, '.3f'), '(m), y= ', format(ball_y, '.3f'), '(m), z= ', format(ball_z, '.3f'),'(m)', format(ball_rad, '.3f'))
+		
+		#manual init coords
+		lin_x = tool_pose_points.linear.x
+		lin_y = tool_pose_points.linear.y
+		lin_z = tool_pose_points.linear.z
+		ang_x = tool_pose_points.angular.x
+		ang_y = tool_pose_points.angular.y
+		ang_z = tool_pose_points.angular.z
+		print('toolpose frame:  x= ', format(lin_x, '.3f'), '(m), y= ', format(lin_y, '.3f'), '(m), z= ', format(lin_z, '.3f'),'(m)', format(ang_x, '.3f'))
 		
 		#MODIFIED FROM PHASE 1
 		# define a plan variable
@@ -104,24 +135,21 @@ if __name__ == '__main__':
 		offset = .025
 		
 		#first point: starting point - initialzied and manual initialization
-		newPlanPoint(plan, 0.133, -0.792, 0.3634, 0, -3.0206, 1.5704, 0)
-		# above ball
-		newPlanPoint(plan, x, y, 0.3634, 0, -3.0206, 1.5704, 0)
-		#second point: where the ball is located
-		newPlanPoint(plan, x, y, z + offset, 0, -3.0206, 1.5704, 0)
-		
-		
-		newPlanPoint(plan, x, y, z + offset, 0, -3.0206, 1.5704, 2)
-		#third point: striagh up from where the ball is located (lifting the ball)
-		newPlanPoint(plan, 0.133, y, 0.3634, 0, -3.0206, 1.5704, 0)
-		#fourth point: point where the ball is to be set down
-		#newPlanPoint(plan, 0.133, -0.792, 0.3634, 0, -3.0206, 1.5704, 0)
-		
-		newPlanPoint(plan, 0.133, -0.792, z+offset, 0, -3.0206, 1.5704, 0)
-		
-		newPlanPoint(plan, 0.133, -0.792, z+offset, 0, -3.0206, 1.5704, 1)
-		
-		newPlanPoint(plan, 0.133, -0.792, 0.3634, 0, -3.0206, 1.5704, 0)
+		newPlanPoint(plan, lin_x, lin_y, lin_z, ang_x, ang_y, ang_z, 0)
+		#second point: above ball
+		newPlanPoint(plan, ball_x, ball_y, lin_z, ang_x, ang_y, ang_z, 0)
+		#third point: where the ball is located
+		newPlanPoint(plan, ball_x, ball_y, ball_z + offset, ang_x, ang_y, ang_z, 0)
+		#fourth point: close grippers
+		newPlanPoint(plan, ball_x, ball_y, ball_z + offset, ang_x, ang_y, ang_z, 2)
+		#fifth point: striaght up from where the ball is located (lifting the ball)
+		newPlanPoint(plan, lin_x, ball_y, lin_z, ang_x, ang_y, ang_z, 0)
+		#sixth point: point where the ball is to be set down
+		newPlanPoint(plan, lin_x, lin_y, ball_z+offset, ang_x, ang_y, ang_z, 0)
+		#seventh point: open gripper
+		newPlanPoint(plan, lin_x, lin_y, ball_z+offset, ang_x, ang_y, ang_z, 1)
+		#eigth point: back to start
+		newPlanPoint(plan, lin_x, lin_y, lin_z, ang_x, ang_y, ang_z, 0)
 		
 		
 		#traker checker: if it is true, let the user know it has stopped moving, otherwise publish as normal
